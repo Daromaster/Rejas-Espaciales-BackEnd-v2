@@ -1,0 +1,6 @@
+# Ignorar archivos innecesarios
+desktop.ini
+.DS_Store
+Thumbs.db
+node_modules/
+puntajes.json
