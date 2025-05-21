@@ -19,6 +19,7 @@ router.get('/', (req, res) => {
 // Ruta POST: guarda un nuevo puntaje
 router.post('/', (req, res) => {
   const nuevo = req.body;
+  // Verificar que los campos obligatorios estén presentes
   if (!nuevo.nombre || typeof nuevo.puntaje !== 'number') {
     return res.status(400).json({ error: 'Formato inválido' });
   }
@@ -26,6 +27,12 @@ router.post('/', (req, res) => {
   try {
     const data = fs.readFileSync(PATH, 'utf8');
     const puntajes = JSON.parse(data);
+    
+    // Asegurarse de que los campos opcionales existan
+    if (!nuevo.version) {
+      nuevo.version = "desconocida";
+    }
+    
     puntajes.push(nuevo);
     fs.writeFileSync(PATH, JSON.stringify(puntajes, null, 2));
     res.status(201).json({ mensaje: 'Puntaje guardado' });
