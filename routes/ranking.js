@@ -33,6 +33,19 @@ router.post('/', (req, res) => {
       nuevo.version = "desconocida";
     }
     
+    // Asegurar que el campo de fecha y hora exista
+    if (!nuevo.fechaHora) {
+      // Generar fecha/hora del servidor como fallback
+      const ahora = new Date();
+      const fecha = ahora.getFullYear() +
+          String(ahora.getMonth() + 1).padStart(2, '0') +
+          String(ahora.getDate()).padStart(2, '0');
+      const hora = String(ahora.getHours()).padStart(2, '0') +
+          String(ahora.getMinutes()).padStart(2, '0') +
+          String(ahora.getSeconds()).padStart(2, '0');
+      nuevo.fechaHora = `${fecha}-${hora}`;
+    }
+    
     puntajes.push(nuevo);
     fs.writeFileSync(PATH, JSON.stringify(puntajes, null, 2));
     res.status(201).json({ mensaje: 'Puntaje guardado' });
