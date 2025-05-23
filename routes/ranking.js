@@ -8,13 +8,31 @@ const PATH = './puntajes.json';
 router.get('/', (req, res) => {
   try {
     console.log('[RANKING] Solicitud GET recibida');
+    console.log('[RANKING] Intentando leer archivo:', PATH);
+    console.log('[RANKING] Working directory:', process.cwd());
+    
+    // Verificar si el archivo existe
+    if (!fs.existsSync(PATH)) {
+      console.log('[RANKING] ⚠️ Archivo no existe, creando archivo vacío');
+      fs.writeFileSync(PATH, '[]', 'utf8');
+    }
+    
     const data = fs.readFileSync(PATH, 'utf8');
+    console.log('[RANKING] Archivo leído, contenido length:', data.length);
+    
     const puntajes = JSON.parse(data);
+    console.log('[RANKING] JSON parseado correctamente, entradas encontradas:', puntajes.length);
+    
     puntajes.sort((a, b) => b.puntaje - a.puntaje);
     console.log(`[RANKING] Enviando ${puntajes.length} puntajes`);
     res.json(puntajes);
   } catch (error) {
     console.error('[RANKING] Error en GET:', error);
+    console.error('[RANKING] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     res.status(500).json({ error: 'No se pudo leer el ranking.' });
   }
 });
@@ -31,8 +49,19 @@ router.post('/', (req, res) => {
   }
 
   try {
+    console.log('[RANKING] Validación de datos exitosa');
+    
+    // Verificar si el archivo existe antes de leer
+    if (!fs.existsSync(PATH)) {
+      console.log('[RANKING] Archivo no existe, creando nuevo archivo');
+      fs.writeFileSync(PATH, '[]', 'utf8');
+    }
+    
     const data = fs.readFileSync(PATH, 'utf8');
+    console.log('[RANKING] Archivo actual leído, tamaño:', data.length);
+    
     const puntajes = JSON.parse(data);
+    console.log('[RANKING] Puntajes actuales:', puntajes.length);
     
     // Asegurarse de que los campos opcionales existan
     if (!nuevo.version) {
@@ -53,11 +82,20 @@ router.post('/', (req, res) => {
     }
     
     puntajes.push(nuevo);
+    console.log('[RANKING] Nuevo puntaje agregado, total ahora:', puntajes.length);
+    
     fs.writeFileSync(PATH, JSON.stringify(puntajes, null, 2));
+    console.log('[RANKING] Archivo guardado exitosamente');
+    
     console.log(`[RANKING] Puntaje guardado exitosamente. Total: ${puntajes.length}`);
     res.status(201).json({ mensaje: 'Puntaje guardado' });
   } catch (error) {
     console.error('[RANKING] Error en POST:', error);
+    console.error('[RANKING] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     res.status(500).json({ error: 'No se pudo guardar el puntaje.' });
   }
 });
