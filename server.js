@@ -16,7 +16,9 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Backend funcionando correctamente',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    revision: 'rev-2025-05-23',
+    version: '2.1.0'
   });
 });
 
