@@ -125,7 +125,8 @@ router.post('/', async (req, res) => {
         version: nuevo.version,
         dispositivo: nuevo.dispositivo,
         ubicacion: nuevo.ubicacion,
-        fechahora: fechahoraISO
+        fechahora: fechahoraISO,
+        nivel: nuevo.nivel || '1'
       }])
       .select();
 
