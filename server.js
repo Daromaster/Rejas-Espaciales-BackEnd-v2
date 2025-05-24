@@ -1,4 +1,16 @@
-// server.jsconst express = require('express');const cors = require('cors');const rankingRouter = require('./routes/ranking');const { createClient } = require('@supabase/supabase-js');const app = express();const PORT = process.env.PORT || 3000;// Configurar cliente de Supabase para endpoint /infoconst SUPABASE_URL = process.env.SUPABASE_URL;const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+// server.js
+const express = require('express');
+const cors = require('cors');
+const rankingRouter = require('./routes/ranking');
+const { createClient } = require('@supabase/supabase-js');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configurar cliente de Supabase para endpoint /info
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
 // Middlewares
 app.use(cors());
