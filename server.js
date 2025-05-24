@@ -1,11 +1,4 @@
-// server.js
-const express = require('express');
-const cors = require('cors');
-const rankingRouter = require('./routes/ranking');
-const fs = require('fs');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
+// server.jsconst express = require('express');const cors = require('cors');const rankingRouter = require('./routes/ranking');const { createClient } = require('@supabase/supabase-js');const app = express();const PORT = process.env.PORT || 3000;// Configurar cliente de Supabase para endpoint /infoconst SUPABASE_URL = process.env.SUPABASE_URL;const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
 // Middlewares
 app.use(cors());
@@ -31,26 +24,38 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Endpoint de información del servidor
-app.get('/info', (req, res) => {
+// Endpoint de información del servidor (ahora con Supabase)
+app.get('/info', async (req, res) => {
   try {
-    const data = fs.readFileSync('./puntajes.json', 'utf8');
-    const puntajes = JSON.parse(data);
+    console.log('[INFO] Consultando total de puntajes en Supabase');
+    
+    const { data, error, count } = await supabase
+      .from('puntajes')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) {
+      console.error('[INFO] Error al consultar Supabase:', error);
+      throw error;
+    }
+
     res.json({
       revision: 'rev-2025-05-23',
       version: '2.1.0',
-      totalScores: puntajes.length,
+      totalScores: count || 0,
       lastUpdate: new Date().toISOString(),
-      status: 'running'
+      status: 'running',
+      database: 'supabase'
     });
   } catch (error) {
+    console.error('[INFO] Error:', error);
     res.json({
       revision: 'rev-2025-05-23',
       version: '2.1.0',
       totalScores: 0,
       lastUpdate: new Date().toISOString(),
       status: 'running',
-      error: 'No se pudo leer puntajes'
+      database: 'supabase',
+      error: 'No se pudo consultar la base de datos'
     });
   }
 });
@@ -60,7 +65,8 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'Rejas Espaciales Backend v2.1.0', 
     status: 'running',
-    endpoints: ['/health', '/status', '/info', '/ranking']
+    endpoints: ['/health', '/status', '/info', '/ranking'],
+    database: 'supabase'
   });
 });
 

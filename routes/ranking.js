@@ -1,31 +1,73 @@
 // routes/ranking.js
 const express = require('express');
-const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
-const PATH = './puntajes.json';
+
+// Variables de entorno
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+
+// Crear cliente de Supabase
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
+// Función para convertir formato custom "20250524-100800" a ISO timestamp
+function customToISO(customDate) {
+  if (!customDate) return new Date().toISOString();
+  
+  // Parsear formato "20250524-100800"
+  const year = customDate.substr(0, 4);
+  const month = customDate.substr(4, 2);
+  const day = customDate.substr(6, 2);
+  const hour = customDate.substr(9, 2);
+  const minute = customDate.substr(11, 2);
+  const second = customDate.substr(13, 2);
+  
+  // Crear fecha en ISO format
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+}
+
+// Función para convertir timestamp ISO a formato custom "20250524-100800"
+function isoToCustom(isoDate) {
+  if (!isoDate) return null;
+  
+  const date = new Date(isoDate);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const second = String(date.getSeconds()).padStart(2, '0');
+  
+  return `${year}${month}${day}-${hour}${minute}${second}`;
+}
 
 // Ruta GET: devuelve el ranking ordenado
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     console.log('[RANKING] Solicitud GET recibida');
-    console.log('[RANKING] Intentando leer archivo:', PATH);
-    console.log('[RANKING] Working directory:', process.cwd());
+    console.log('[RANKING] Consultando tabla puntajes en Supabase');
     
-    // Verificar si el archivo existe
-    if (!fs.existsSync(PATH)) {
-      console.log('[RANKING] ⚠️ Archivo no existe, creando archivo vacío');
-      fs.writeFileSync(PATH, '[]', 'utf8');
+    const { data: puntajes, error } = await supabase
+      .from('puntajes')
+      .select('*')
+      .order('puntaje', { ascending: false });
+
+    if (error) {
+      console.error('[RANKING] Error al consultar Supabase:', error);
+      throw error;
     }
     
-    const data = fs.readFileSync(PATH, 'utf8');
-    console.log('[RANKING] Archivo leído, contenido length:', data.length);
+    console.log('[RANKING] Datos recibidos de Supabase, entradas encontradas:', puntajes.length);
     
-    const puntajes = JSON.parse(data);
-    console.log('[RANKING] JSON parseado correctamente, entradas encontradas:', puntajes.length);
+    // Convertir fechahora de cada puntaje al formato custom para el frontend
+    const puntajesFormatted = puntajes.map(puntaje => ({
+      ...puntaje,
+      fechaHora: isoToCustom(puntaje.fechahora) // Agregar campo con camelCase para compatibilidad
+    }));
     
-    puntajes.sort((a, b) => b.puntaje - a.puntaje);
-    console.log(`[RANKING] Enviando ${puntajes.length} puntajes`);
-    res.json(puntajes);
+    console.log(`[RANKING] Enviando ${puntajesFormatted.length} puntajes con fechas convertidas`);
+    
+    res.json(puntajesFormatted);
   } catch (error) {
     console.error('[RANKING] Error en GET:', error);
     console.error('[RANKING] Error details:', {
@@ -38,7 +80,7 @@ router.get('/', (req, res) => {
 });
 
 // Ruta POST: guarda un nuevo puntaje
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   console.log('[RANKING] Solicitud POST recibida:', req.body);
   const nuevo = req.body;
   
@@ -50,18 +92,6 @@ router.post('/', (req, res) => {
 
   try {
     console.log('[RANKING] Validación de datos exitosa');
-    
-    // Verificar si el archivo existe antes de leer
-    if (!fs.existsSync(PATH)) {
-      console.log('[RANKING] Archivo no existe, creando nuevo archivo');
-      fs.writeFileSync(PATH, '[]', 'utf8');
-    }
-    
-    const data = fs.readFileSync(PATH, 'utf8');
-    console.log('[RANKING] Archivo actual leído, tamaño:', data.length);
-    
-    const puntajes = JSON.parse(data);
-    console.log('[RANKING] Puntajes actuales:', puntajes.length);
     
     // Asegurarse de que los campos opcionales existan
     if (!nuevo.version) {
@@ -81,14 +111,33 @@ router.post('/', (req, res) => {
       nuevo.fechaHora = `${fecha}-${hora}`;
     }
     
-    puntajes.push(nuevo);
-    console.log('[RANKING] Nuevo puntaje agregado, total ahora:', puntajes.length);
+    // Convertir fechaHora de formato custom a ISO para Supabase
+    const fechahoraISO = customToISO(nuevo.fechaHora);
+    console.log('[RANKING] Fecha convertida:', nuevo.fechaHora, '->', fechahoraISO);
     
-    fs.writeFileSync(PATH, JSON.stringify(puntajes, null, 2));
-    console.log('[RANKING] Archivo guardado exitosamente');
+    console.log('[RANKING] Insertando puntaje en Supabase:', nuevo);
     
-    console.log(`[RANKING] Puntaje guardado exitosamente. Total: ${puntajes.length}`);
-    res.status(201).json({ mensaje: 'Puntaje guardado' });
+    const { data, error } = await supabase
+      .from('puntajes')
+      .insert([{
+        nombre: nuevo.nombre,
+        puntaje: nuevo.puntaje,
+        version: nuevo.version,
+        dispositivo: nuevo.dispositivo,
+        ubicacion: nuevo.ubicacion,
+        fechahora: fechahoraISO
+      }])
+      .select();
+
+    if (error) {
+      console.error('[RANKING] Error al insertar en Supabase:', error);
+      throw error;
+    }
+    
+    console.log('[RANKING] Puntaje insertado exitosamente en Supabase:', data);
+    console.log(`[RANKING] Puntaje guardado exitosamente. ID: ${data[0]?.id}`);
+    
+    res.status(201).json({ mensaje: 'Puntaje guardado', data: data[0] });
   } catch (error) {
     console.error('[RANKING] Error en POST:', error);
     console.error('[RANKING] Error details:', {
