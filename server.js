@@ -39,6 +39,8 @@ app.get('/status', (req, res) => {
 // Endpoint de información del servidor (ahora con Supabase)
 app.get('/info', async (req, res) => {
   try {
+    const checkTimestamp = req.query.check_timestamp;
+    console.log(`[INFO] Consulta de verificación - Timestamp: ${checkTimestamp || 'no timestamp'}`);
     console.log('[INFO] Consultando total de puntajes en Supabase');
     
     const { data, error, count } = await supabase
@@ -50,16 +52,48 @@ app.get('/info', async (req, res) => {
       throw error;
     }
 
+    // Registrar la consulta exitosa en Supabase para tracking
+    if (checkTimestamp) {
+      await supabase
+        .from('health_checks')
+        .insert([{
+          timestamp: new Date().toISOString(),
+          check_id: checkTimestamp,
+          success: true,
+          total_scores: count || 0
+        }])
+        .select();
+    }
+
     res.json({
       revision: 'rev-2025-05-23',
       version: '2.1.0',
       totalScores: count || 0,
       lastUpdate: new Date().toISOString(),
       status: 'running',
-      database: 'supabase'
+      database: 'supabase',
+      check_timestamp: checkTimestamp
     });
   } catch (error) {
     console.error('[INFO] Error:', error);
+    
+    // Registrar el error en Supabase si hay timestamp
+    if (req.query.check_timestamp) {
+      try {
+        await supabase
+          .from('health_checks')
+          .insert([{
+            timestamp: new Date().toISOString(),
+            check_id: req.query.check_timestamp,
+            success: false,
+            error: error.message
+          }])
+          .select();
+      } catch (logError) {
+        console.error('[INFO] Error al registrar fallo:', logError);
+      }
+    }
+
     res.json({
       revision: 'rev-2025-05-23',
       version: '2.1.0',
@@ -67,7 +101,8 @@ app.get('/info', async (req, res) => {
       lastUpdate: new Date().toISOString(),
       status: 'running',
       database: 'supabase',
-      error: 'No se pudo consultar la base de datos'
+      error: 'No se pudo consultar la base de datos',
+      check_timestamp: req.query.check_timestamp
     });
   }
 });
