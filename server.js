@@ -52,19 +52,7 @@ app.get('/info', async (req, res) => {
       throw error;
     }
 
-    // Registrar la consulta exitosa en Supabase para tracking
-    if (checkTimestamp) {
-      await supabase
-        .from('health_checks')
-        .insert([{
-          timestamp: new Date().toISOString(),
-          check_id: checkTimestamp,
-          success: true,
-          total_scores: count || 0
-        }])
-        .select();
-    }
-
+    // Ya no intentamos escribir en health_checks
     res.json({
       revision: 'rev-2025-05-23',
       version: '2.1.0',
@@ -77,23 +65,6 @@ app.get('/info', async (req, res) => {
   } catch (error) {
     console.error('[INFO] Error:', error);
     
-    // Registrar el error en Supabase si hay timestamp
-    if (req.query.check_timestamp) {
-      try {
-        await supabase
-          .from('health_checks')
-          .insert([{
-            timestamp: new Date().toISOString(),
-            check_id: req.query.check_timestamp,
-            success: false,
-            error: error.message
-          }])
-          .select();
-      } catch (logError) {
-        console.error('[INFO] Error al registrar fallo:', logError);
-      }
-    }
-
     res.json({
       revision: 'rev-2025-05-23',
       version: '2.1.0',
