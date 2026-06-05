@@ -7,6 +7,13 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Palabras Rotas
+const palabrasRotasRouter = require('./routes/palabras_rotas');
+
+
+
+
+
 // Configurar cliente de Supabase para endpoint /info
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
@@ -15,6 +22,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+app.use('/ranking', rankingRouter);
+app.use('/palabras_rotas', palabrasRotasRouter);
+
 
 // Endpoint de health check
 app.get('/health', (req, res) => {
@@ -88,10 +99,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// Rutas
-app.use('/ranking', rankingRouter);
 
 // Servidor en marcha
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
 });
+
+
